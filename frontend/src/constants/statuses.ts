@@ -1,0 +1,41 @@
+export const OFFER_STATUS_LABELS: Record<string, string> = {
+  DRAFT: 'Draft',
+  PENDING_TA_APPROVAL: 'Pending TA Approval',
+  SENT_BACK_BY_TA: 'Sent Back by TA',
+  PENDING_HOD_APPROVAL: 'Pending HOD Approval',
+  SENT_BACK_BY_HOD: 'Sent Back by HOD',
+  PENDING_HR_HEAD_APPROVAL: 'Pending HR Head Approval',
+  SENT_BACK_BY_HR_HEAD: 'Sent Back by HR Head',
+  APPROVED: 'Approved',
+  OFFER_RELEASED: 'Offer Released',
+  ACCEPTED: 'Accepted',
+  ONBOARDING_IN_PROGRESS: 'Onboarding',
+  JOINED: 'Joined',
+  REJECTED: 'Rejected',
+  DECLINED: 'Declined',
+  WITHDRAWN: 'Withdrawn',
+  NO_SHOW: 'No Show',
+  CLOSED: 'Closed',
+};
+
+export const OFFER_STATUS_BADGE: Record<string, string> = {
+  DRAFT: 'badge-gray',
+  PENDING_TA_APPROVAL: 'badge-yellow',
+  SENT_BACK_BY_TA: 'badge-yellow',
+  PENDING_HOD_APPROVAL: 'badge-yellow',
+  SENT_BACK_BY_HOD: 'badge-yellow',
+  PENDING_HR_HEAD_APPROVAL: 'badge-yellow',
+  SENT_BACK_BY_HR_HEAD: 'badge-yellow',
+  APPROVED: 'badge-blue',
+  OFFER_RELEASED: 'badge-blue',
+  ACCEPTED: 'badge-green',
+  ONBOARDING_IN_PROGRESS: 'badge-green',
+  JOINED: 'badge-green',
+  REJECTED: 'badge-red',
+  DECLINED: 'badge-red',
+  WITHDRAWN: 'badge-gray',
+  NO_SHOW: 'badge-red',
+  CLOSED: 'badge-gray',
+};
+
+export const TERMINAL_STATUSES = ['JOINED', 'REJECTED', 'DECLINED', 'WITHDRAWN', 'NO_SHOW', 'CLOSED'];

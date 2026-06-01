@@ -1,0 +1,512 @@
+// Production schema — PostgreSQL. Swapped in by deploy.sh.
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+  TA_MANAGER
+  RECRUITER
+  HIRING_MANAGER
+  HOD
+  HR_HEAD
+  HRBP
+  COMP_FINANCE
+  ONBOARDING_SPOC
+  EMPLOYEE
+}
+
+enum AuthProvider {
+  LOCAL
+  GOOGLE
+}
+
+enum CompanyEntity {
+  DOTPE
+}
+
+enum EmploymentType {
+  PERMANENT
+  CONTRACT
+  INTERN
+}
+
+enum WorkMode {
+  ONSITE
+  HYBRID
+  REMOTE
+}
+
+enum RecruiterConfidence {
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum RiskBand {
+  GREEN
+  AMBER
+  RED
+}
+
+enum BandPosition {
+  BELOW_BAND
+  IN_BAND
+  ABOVE_BAND
+}
+
+enum OfferStatus {
+  DRAFT
+  PENDING_TA_APPROVAL
+  SENT_BACK_BY_TA
+  PENDING_HOD_APPROVAL
+  SENT_BACK_BY_HOD
+  PENDING_HR_HEAD_APPROVAL
+  SENT_BACK_BY_HR_HEAD
+  APPROVED
+  OFFER_RELEASED
+  ACCEPTED
+  ONBOARDING_IN_PROGRESS
+  JOINED
+  REJECTED
+  DECLINED
+  WITHDRAWN
+  NO_SHOW
+  CLOSED
+}
+
+enum WorkflowStatus {
+  PENDING
+  IN_PROGRESS
+  APPROVED
+  REJECTED
+  SENT_BACK
+}
+
+enum StepStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  SENT_BACK
+  DELEGATED
+  SKIPPED
+}
+
+enum ApprovalAction {
+  APPROVE
+  REJECT
+  SEND_BACK
+  APPROVE_WITH_COMMENT
+  APPROVE_EXCEPTION
+  DELEGATE
+}
+
+enum OfferLetterStatus {
+  DRAFT
+  RELEASED
+  SIGNED
+  DECLINED
+}
+
+enum NotificationChannel {
+  IN_APP
+  EMAIL
+}
+
+model User {
+  id              String       @id @default(cuid())
+  email           String       @unique
+  passwordHash    String?
+  firstName       String
+  lastName        String
+  role            Role         @default(EMPLOYEE)
+  department      String?
+  isActive        Boolean      @default(true)
+  lastLoginAt     DateTime?
+  failedAttempts  Int          @default(0)
+  lockedUntil     DateTime?
+  resetToken      String?
+  resetTokenExpiry DateTime?
+  authProvider    AuthProvider @default(LOCAL)
+  googleId        String?
+  avatarUrl       String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  refreshTokens        RefreshToken[]
+  createdOffers        OfferCase[]          @relation("CreatedBy")
+  recruiterOffers      OfferCase[]          @relation("Recruiter")
+  hiringManagerOffers  OfferCase[]          @relation("HiringManager")
+  hodOffers            OfferCase[]          @relation("HOD")
+  approvalSteps        ApprovalStep[]       @relation("Approver")
+  delegatedSteps       ApprovalStep[]       @relation("DelegatedTo")
+  auditLogs            AuditLog[]
+  notifications        NotificationEvent[]
+  generatedLetters     OfferLetter[]        @relation("GeneratedBy")
+  releasedLetters      OfferLetter[]        @relation("ReleasedBy")
+  letterVersions       OfferLetterVersion[]
+  templates            OfferLetterTemplate[]
+  statusHistory        OfferStatusHistory[]
+  delegatesFrom        DelegateMapping[]    @relation("DelegateFrom")
+  delegatesTo          DelegateMapping[]    @relation("DelegateTo")
+}
+
+model RefreshToken {
+  token      String    @unique
+  userId     String
+  expiresAt  DateTime
+  createdAt  DateTime  @default(now())
+  revokedAt  DateTime?
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Candidate {
+  id                    String    @id @default(cuid())
+  fullName              String
+  email                 String    @unique
+  phone                 String?
+  location              String?
+  linkedIn              String?
+  portfolio             String?
+  resume                String?
+  portalPasswordHash    String?
+  portalToken           String?   @unique
+  portalTokenExpiresAt  DateTime?
+  portalOtp             String?
+  portalOtpExpiry       DateTime?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  offerCases   OfferCase[]
+  documents    CandidateDocument[]
+}
+
+model OfferCase {
+  id                       String              @id @default(cuid())
+  caseNumber               Int                 @unique @default(autoincrement())
+  candidateId              String
+  createdById              String
+  recruiterId              String?
+  hiringManagerId          String?
+  hodId                    String?
+  status                   OfferStatus         @default(DRAFT)
+  companyEntity            CompanyEntity       @default(DOTPE)
+  roleTitle                String
+  department               String
+  jobFamily                String?
+  level                    String?
+  grade                    String?
+  employmentType           EmploymentType      @default(PERMANENT)
+  location                 String?
+  workMode                 WorkMode            @default(ONSITE)
+  pfOptIn                  Boolean             @default(true)
+  currentFixed             Float?
+  currentVariable          Float?
+  currentBonus             Float?
+  currentStock             Float?
+  currentTotalCash         Float?
+  currentTotalCTC          Float?
+  expectedFixed            Float?
+  expectedTotal            Float?
+  minimumAcceptable        Float?
+  preferredDOJ             DateTime?
+  earliestDOJ              DateTime?
+  expectedDOJ              DateTime?
+  actualDOJ                DateTime?
+  noticePeriodDays         Int?
+  noticePeriodBuyout       Boolean             @default(false)
+  hasOfferInHand           Boolean             @default(false)
+  offerInHandCompany       String?
+  offerInHandAmount        Float?
+  counterOfferLikelihood   String?
+  whyLikelyToJoin          String?
+  whyMayNotJoin            String?
+  topDecisionDrivers       String?
+  recruiterConfidence      RecruiterConfidence?
+  convictionScore          Int?
+  joiningProbability       Int?
+  riskBand                 RiskBand?
+  riskReasons              String?
+  offerValidityDate        DateTime?
+  offerReleasedAt          DateTime?
+  acceptedAt               DateTime?
+  declinedAt               DateTime?
+  joinedAt                 DateTime?
+  createdAt                DateTime            @default(now())
+  updatedAt                DateTime            @updatedAt
+
+  candidate            Candidate             @relation(fields: [candidateId], references: [id])
+  createdBy            User                  @relation("CreatedBy", fields: [createdById], references: [id])
+  recruiter            User?                 @relation("Recruiter", fields: [recruiterId], references: [id])
+  hiringManager        User?                 @relation("HiringManager", fields: [hiringManagerId], references: [id])
+  hod                  User?                 @relation("HOD", fields: [hodId], references: [id])
+  compensationProposal CompensationProposal?
+  workflow             ApprovalWorkflow?
+  offerLetter          OfferLetter?
+  statusHistory        OfferStatusHistory[]
+  onboardingCase       OnboardingCase?
+
+  @@index([status])
+  @@index([createdById])
+  @@index([department])
+  @@index([candidateId])
+  @@index([status, department])
+}
+
+model CompensationProposal {
+  id                   String       @id @default(cuid())
+  offerCaseId          String       @unique
+  version              Int          @default(1)
+  proposedDesignation  String?
+  proposedLevel        String?
+  proposedGrade        String?
+  proposedFixed        Float
+  proposedVariable     Float        @default(0)
+  proposedTotalCash    Float
+  proposedTotalCTC     Float
+  joiningBonus         Float        @default(0)
+  retentionBonus       Float        @default(0)
+  relocationBonus      Float        @default(0)
+  guaranteedBonus      Float        @default(0)
+  esopGrant            Float        @default(0)
+  otherComponents      Json?
+  fixedHikePercent     Float?
+  totalCTCHikePercent  Float?
+  deltaVsExpectation   Float?
+  compaRatio           Float?
+  bandPosition         BandPosition?
+  isOutOfBand          Boolean      @default(false)
+  isHighHike           Boolean      @default(false)
+  requiresException    Boolean      @default(false)
+  isLocked             Boolean      @default(false)
+  lockedAt             DateTime?
+  lockedById           String?
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
+
+  offerCase OfferCase @relation(fields: [offerCaseId], references: [id], onDelete: Cascade)
+}
+
+model ApprovalWorkflow {
+  id          String         @id @default(cuid())
+  offerCaseId String         @unique
+  status      WorkflowStatus @default(IN_PROGRESS)
+  currentStep Int            @default(0)
+  startedAt   DateTime       @default(now())
+  completedAt DateTime?
+
+  offerCase OfferCase      @relation(fields: [offerCaseId], references: [id], onDelete: Cascade)
+  steps     ApprovalStep[]
+}
+
+model ApprovalStep {
+  id            String          @id @default(cuid())
+  workflowId    String
+  stepOrder     Int
+  approverRole  Role
+  approverId    String?
+  status        StepStatus      @default(PENDING)
+  action        ApprovalAction?
+  comment       String?
+  delegatedToId String?
+  slaDeadline   DateTime?
+  isSlaBreached Boolean         @default(false)
+  actedAt       DateTime?
+
+  workflow    ApprovalWorkflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  approver    User?            @relation("Approver", fields: [approverId], references: [id])
+  delegatedTo User?            @relation("DelegatedTo", fields: [delegatedToId], references: [id])
+}
+
+model ApprovalRule {
+  id               String  @id @default(cuid())
+  name             String
+  department       String?
+  level            String?
+  minCompThreshold Float?
+  maxCompThreshold Float?
+  hikeThreshold    Float?
+  includesEsop     Boolean @default(false)
+  includesJB       Boolean @default(false)
+  isException      Boolean @default(false)
+  isInternational  Boolean @default(false)
+  roleCriticality  String?
+  approvalChain    Json    // [{role, userId?, slaHours}]
+  slaHours         Int     @default(48)
+  priority         Int     @default(0)
+  isActive         Boolean @default(true)
+}
+
+model OfferLetterTemplate {
+  id            String        @id @default(cuid())
+  companyEntity CompanyEntity @default(DOTPE)
+  version       Int           @default(1)
+  name          String
+  subject       String
+  bodyHtml      String        // JSON-serialized TemplateBody
+  isActive      Boolean       @default(true)
+  notes         String?
+  createdById   String
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  createdBy    User          @relation(fields: [createdById], references: [id])
+  offerLetters OfferLetter[]
+
+  @@unique([companyEntity, version])
+}
+
+model OfferLetter {
+  id                  String            @id @default(cuid())
+  offerCaseId         String            @unique
+  templateId          String
+  templateVersion     Int
+  companyEntity       CompanyEntity     @default(DOTPE)
+  version             Int               @default(1)
+  status              OfferLetterStatus @default(DRAFT)
+  renderedHtml        String?
+  pdfPath             String?
+  salaryBreakupJson   Json?
+  generatedAt         DateTime          @default(now())
+  generatedById       String?
+  releasedAt          DateTime?
+  releasedById        String?
+  candidateViewedAt   DateTime?
+  candidateSignedAt   DateTime?
+  candidateDeclinedAt DateTime?
+  signatureName       String?
+  signatureIp         String?
+  signatureUserAgent  String?
+
+  offerCase   OfferCase            @relation(fields: [offerCaseId], references: [id], onDelete: Cascade)
+  template    OfferLetterTemplate  @relation(fields: [templateId], references: [id])
+  generatedBy User?                @relation("GeneratedBy", fields: [generatedById], references: [id])
+  releasedBy  User?                @relation("ReleasedBy", fields: [releasedById], references: [id])
+  versions    OfferLetterVersion[]
+}
+
+model OfferLetterVersion {
+  id                String   @id @default(cuid())
+  offerLetterId     String
+  version           Int
+  templateId        String
+  templateVersion   Int
+  renderedHtml      String?
+  pdfPath           String?
+  salaryBreakupJson Json?
+  reason            String?
+  generatedById     String?
+  createdAt         DateTime @default(now())
+
+  offerLetter OfferLetter @relation(fields: [offerLetterId], references: [id], onDelete: Cascade)
+  generatedBy User?       @relation(fields: [generatedById], references: [id])
+}
+
+model RoleBand {
+  id         String  @id @default(cuid())
+  roleFamily String
+  level      String
+  grade      String?
+  department String?
+  location   String?
+  minFixed   Float
+  midFixed   Float
+  maxFixed   Float
+  minTotal   Float
+  midTotal   Float
+  maxTotal   Float
+  currency   String  @default("INR")
+  isActive   Boolean @default(true)
+}
+
+model DelegateMapping {
+  id         String   @id @default(cuid())
+  fromUserId String
+  toUserId   String
+  department String?
+  validFrom  DateTime
+  validUntil DateTime
+  isActive   Boolean  @default(true)
+
+  fromUser User @relation("DelegateFrom", fields: [fromUserId], references: [id])
+  toUser   User @relation("DelegateTo", fields: [toUserId], references: [id])
+}
+
+model OfferStatusHistory {
+  id          String       @id @default(cuid())
+  offerCaseId String
+  fromStatus  OfferStatus?
+  toStatus    OfferStatus
+  changedById String
+  reason      String?
+  createdAt   DateTime     @default(now())
+
+  offerCase OfferCase @relation(fields: [offerCaseId], references: [id], onDelete: Cascade)
+  changedBy User      @relation(fields: [changedById], references: [id])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  action    String
+  entity    String
+  entityId  String?
+  oldValues Json?
+  newValues Json?
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([entity, entityId])
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model SystemConfig {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+}
+
+model NotificationEvent {
+  id          String              @id @default(cuid())
+  recipientId String
+  type        String
+  channel     NotificationChannel @default(IN_APP)
+  title       String
+  body        String
+  isRead      Boolean             @default(false)
+  metadata    Json?
+  createdAt   DateTime            @default(now())
+
+  recipient User @relation(fields: [recipientId], references: [id], onDelete: Cascade)
+}
+
+model CandidateDocument {
+  id          String   @id @default(cuid())
+  candidateId String
+  type        String
+  fileName    String
+  filePath    String
+  uploadedAt  DateTime @default(now())
+
+  candidate Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+}
+
+model OnboardingCase {
+  id          String   @id @default(cuid())
+  offerCaseId String   @unique
+  status      String   @default("PENDING")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  offerCase OfferCase @relation(fields: [offerCaseId], references: [id], onDelete: Cascade)
+}
