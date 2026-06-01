@@ -6,3 +6,5 @@ dist/
 .env.local
 uploads/
 .DS_Store
+.claude/
+backend/.env.production
