@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
@@ -33,17 +33,22 @@ export default function OfferDraftPage() {
   const [salary, setSalary] = useState<Record<string, number>>({});
   const [pfOptIn, setPfOptIn] = useState(true);
 
-  const { data, isLoading } = useQuery({
+  const { data: offerData, isLoading } = useQuery<any>({
     queryKey: ['offer', id],
     queryFn: () => api.get(`/offers/${id}`).then(r => r.data.offer),
-    onSuccess: (offer: Record<string, unknown>) => {
-      const comp = offer.compensationProposal as Record<string, unknown> | undefined;
-      if (comp?.salaryBreakupJson) {
-        try { setSalary(JSON.parse(comp.salaryBreakupJson as string)); } catch { /* ignore */ }
-      }
-      setPfOptIn((offer.pfOptIn as boolean) ?? true);
-    },
   });
+
+  // Initialise salary and pfOptIn once offer data loads
+  useEffect(() => {
+    if (!offerData) return;
+    const comp = offerData.compensationProposal;
+    if (comp?.salaryBreakupJson) {
+      try { setSalary(JSON.parse(comp.salaryBreakupJson)); } catch { /* ignore */ }
+    }
+    setPfOptIn(offerData.pfOptIn ?? true);
+  }, [offerData]);
+
+  const data = offerData;
 
   const { register, handleSubmit, formState: { isDirty } } = useForm({
     values: data ? {
@@ -407,7 +412,7 @@ export default function OfferDraftPage() {
                   <div className="w-2 h-2 rounded-full bg-brand-700 mt-1.5 shrink-0" />
                   <div>
                     <span className="font-medium">{h.toStatus as string}</span>
-                    {h.reason && <span className="text-red-600 ml-2">— {h.reason as string}</span>}
+                    {h.reason != null && <span className="text-red-600 ml-2">— {String(h.reason)}</span>}
                     <span className="text-gray-400 ml-2 text-xs">
                       {new Date(h.createdAt as string).toLocaleString('en-IN')}
                     </span>

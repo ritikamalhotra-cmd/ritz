@@ -124,7 +124,7 @@ export default function PipelinePage() {
                         app={app}
                         stageKey={stage.key}
                         stages={STAGES}
-                        onMove={(s) => moveMutation.mutate({ appId: app.id, stage: s })}
+                        onMove={(s: string) => moveMutation.mutate({ appId: app.id, stage: s })}
                         onSelect={() => { setSelectedApp(app); setPanelTab('overview'); }}
                         isSelected={selectedApp?.id === app.id}
                         moving={moveMutation.isPending}
@@ -151,8 +151,8 @@ export default function PipelinePage() {
           tab={panelTab}
           onTabChange={setPanelTab}
           onClose={() => setSelectedApp(null)}
-          onMove={(s) => moveMutation.mutate({ appId: refreshedSelectedApp.id, stage: s })}
-          onReject={(r) => rejectMutation.mutate({ appId: refreshedSelectedApp.id, reason: r })}
+          onMove={(s: string) => moveMutation.mutate({ appId: refreshedSelectedApp.id, stage: s })}
+          onReject={(r: string) => rejectMutation.mutate({ appId: refreshedSelectedApp.id, reason: r })}
           onCreateOffer={() => createOfferMutation.mutate(refreshedSelectedApp.id)}
           creatingOffer={createOfferMutation.isPending}
           userRole={user?.role ?? ''}
