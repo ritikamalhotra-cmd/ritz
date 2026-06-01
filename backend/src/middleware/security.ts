@@ -4,15 +4,16 @@ import { RequestHandler } from 'express';
 
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 
-// Build list of allowed origins — supports exact URL + Vercel preview deployments
+// Build list of allowed origins — supports exact URL + all Vercel deployments
 function isAllowedOrigin(origin: string | undefined): boolean {
   // Allow requests with no origin (server-to-server, health checks, curl)
   if (!origin) return true;
+  // Local development
   if (origin === 'http://localhost:5173') return true;
+  // Configured production frontend URL
   if (origin === FRONTEND_URL) return true;
-  // Allow all Vercel preview deployments for this project
-  if (origin.match(/https:\/\/ritz(-[a-z0-9]+)*-ritikamalhotra-cmds-projects\.vercel\.app$/)) return true;
-  if (origin.match(/https:\/\/ritz\.vercel\.app$/)) return true;
+  // Allow ALL Vercel deployments (any preview, production, branch deploys)
+  if (origin.endsWith('.vercel.app')) return true;
   return false;
 }
 
@@ -40,7 +41,13 @@ export const corsMiddleware = cors({
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'X-CSRF-Token', 'X-Portal-Token', 'X-Impersonation-Token'],
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'X-CSRF-Token',
+    'X-Portal-Token',
+    'X-Impersonation-Token',
+  ],
 });
 
 export const requestSizeLimiter: RequestHandler = (req, res, next) => {
