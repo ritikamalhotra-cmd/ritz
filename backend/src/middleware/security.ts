@@ -6,7 +6,8 @@ const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 
 // Build list of allowed origins — supports exact URL + Vercel preview deployments
 function isAllowedOrigin(origin: string | undefined): boolean {
-  if (!origin) return false;
+  // Allow requests with no origin (server-to-server, health checks, curl)
+  if (!origin) return true;
   if (origin === 'http://localhost:5173') return true;
   if (origin === FRONTEND_URL) return true;
   // Allow all Vercel preview deployments for this project
