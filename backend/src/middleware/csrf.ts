@@ -4,6 +4,7 @@ import crypto from 'crypto';
 const STATE_CHANGING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 const EXEMPT_EXACT = new Set([
   '/api/auth/login',
+  '/api/auth/refresh',
   '/api/auth/forgot-password',
   '/api/auth/reset-password',
   '/api/auth/google/auth',
@@ -14,13 +15,20 @@ const EXEMPT_PREFIXES = [
 ];
 
 export const csrfProtection: RequestHandler = (req, res, next) => {
-  if (process.env.NODE_ENV !== 'production') { next(); return; }
   const isProd = process.env.NODE_ENV === 'production';
+
+  // In production: Bearer token requests are inherently CSRF-safe
+  // (localStorage tokens are not auto-sent by browsers, unlike cookies)
+  if (isProd && req.headers.authorization?.startsWith('Bearer ')) {
+    next(); return;
+  }
+
+  // Set CSRF cookie for cookie-based sessions (local dev)
   let token = req.cookies?.csrf_token as string | undefined;
   if (!token) token = crypto.randomBytes(32).toString('hex');
   res.cookie('csrf_token', token, {
     httpOnly: false,
-    sameSite: 'strict',
+    sameSite: isProd ? 'none' : 'lax',
     secure: isProd,
     path: '/',
   });
@@ -29,7 +37,7 @@ export const csrfProtection: RequestHandler = (req, res, next) => {
     EXEMPT_EXACT.has(req.path) ||
     EXEMPT_PREFIXES.some((p) => req.path.startsWith(p));
 
-  if (STATE_CHANGING_METHODS.has(req.method) && !isExempt) {
+  if (isProd && STATE_CHANGING_METHODS.has(req.method) && !isExempt) {
     const header = req.headers['x-csrf-token'] as string | undefined;
     const cookie = req.cookies?.csrf_token as string | undefined;
     if (!header || !cookie || header !== cookie) {
@@ -37,5 +45,6 @@ export const csrfProtection: RequestHandler = (req, res, next) => {
       return;
     }
   }
+
   next();
 };
