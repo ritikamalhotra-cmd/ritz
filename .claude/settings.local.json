@@ -37,7 +37,15 @@
       "Bash(npx ts-node *)",
       "Bash(node --require ts-node/register/transpile-only -e ' *)",
       "Bash(curl -s -X POST http://localhost:4000/api/auth/login -H 'Content-Type: application/json' -d '{\"email\":\"admin@dotpe.in\",\"password\":\"Admin@dotpe1\"}' -c /tmp/ck.txt)",
-      "Bash(curl -s -X POST http://localhost:4000/api/admin/sync-ats-sheet -b /tmp/ck.txt)"
+      "Bash(curl -s -X POST http://localhost:4000/api/admin/sync-ats-sheet -b /tmp/ck.txt)",
+      "Bash(DATABASE_URL=\"postgresql://postgres:AssetTagIDDOTXX10065@db.uegqadaphuqjrljfuycq.supabase.co:5432/postgres\" npx prisma db push)",
+      "Bash(DATABASE_URL=\"postgresql://postgres:AssetTagIDDOTXX10065@db.uegqadaphuqjrljfuycq.supabase.co:6543/postgres\" npx prisma db push)",
+      "Bash(nc -zv db.uegqadaphuqjrljfuycq.supabase.co 5432)",
+      "Bash(nc -zv db.uegqadaphuqjrljfuycq.supabase.co 6543)",
+      "Bash(DATABASE_URL=\"postgresql://neondb_owner:npg_LNf2jEdUB0ys@ep-square-bar-aoyq3594.c-2.ap-southeast-1.aws.neon.tech/neondb?sslmode=require\" npx prisma db push)",
+      "Bash(openssl rand *)",
+      "Bash(echo \"JWT_ACCESS_SECRET=$\\(openssl rand -hex 64\\)\")",
+      "Bash(echo \"JWT_REFRESH_SECRET=$\\(openssl rand -hex 64\\)\")"
     ]
   }
 }
