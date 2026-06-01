@@ -2,13 +2,20 @@ import axios from 'axios';
 
 const BASE = import.meta.env.VITE_API_BASE_URL || '';
 
+export const TOKEN_KEY    = 'ot_access_token';
+export const REFRESH_KEY  = 'ot_refresh_token';
+
 export const api = axios.create({
   baseURL: `${BASE}/api`,
   withCredentials: true,
 });
 
-// Read CSRF token from cookie and attach to all state-changing requests
+// Attach Bearer token on every request
 api.interceptors.request.use((config) => {
+  const token = localStorage.getItem(TOKEN_KEY);
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+
+  // CSRF for cookie-based sessions (fallback)
   if (['post', 'put', 'patch', 'delete'].includes(config.method ?? '')) {
     const csrf = document.cookie
       .split('; ')
@@ -29,11 +36,18 @@ api.interceptors.response.use(
       original._retry = true;
       refreshing = true;
       try {
-        await api.post('/auth/refresh');
+        const refreshToken = localStorage.getItem(REFRESH_KEY);
+        const res = await api.post('/auth/refresh', { refreshToken });
+        if (res.data.accessToken) {
+          localStorage.setItem(TOKEN_KEY, res.data.accessToken);
+          localStorage.setItem(REFRESH_KEY, res.data.refreshToken);
+        }
         refreshing = false;
         return api(original);
       } catch {
         refreshing = false;
+        localStorage.removeItem(TOKEN_KEY);
+        localStorage.removeItem(REFRESH_KEY);
         window.location.href = '/login';
       }
     }

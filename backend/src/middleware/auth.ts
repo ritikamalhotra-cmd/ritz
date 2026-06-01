@@ -18,16 +18,15 @@ declare global {
 
 export const authenticate: RequestHandler = async (req, res, next) => {
   try {
-    // Dev bypass — auto-attach admin user without login
-    if (process.env.NODE_ENV === 'development') {
-      const admin = await db.user.findFirst({ where: { role: 'SUPER_ADMIN' } });
-      if (admin) {
-        req.user = { id: admin.id, email: admin.email, role: admin.role, department: admin.department };
-        next(); return;
-      }
+    // Support both Bearer token (Authorization header) and cookie
+    let token: string | undefined;
+    const authHeader = req.headers.authorization;
+    if (authHeader?.startsWith('Bearer ')) {
+      token = authHeader.slice(7);
+    } else {
+      token = req.cookies?.access_token as string | undefined;
     }
 
-    const token = req.cookies?.access_token as string | undefined;
     if (!token) {
       res.status(401).json({ error: 'Authentication required' });
       return;

@@ -113,6 +113,8 @@ router.post('/login', authLimiter, validate(loginSchema), async (req: Request, r
     setCookies(res, accessToken, refreshToken, req);
     res.json({
       user: { id: user.id, email: user.email, role: user.role, firstName: user.firstName, lastName: user.lastName },
+      accessToken,
+      refreshToken,
     });
   } catch (err) {
     logger.error('Login error', { err });
@@ -123,7 +125,9 @@ router.post('/login', authLimiter, validate(loginSchema), async (req: Request, r
 // POST /api/auth/refresh
 router.post('/refresh', async (req: Request, res: Response) => {
   try {
-    const token = req.cookies?.refresh_token as string | undefined;
+    // Support refresh token from cookie or request body (for cross-domain)
+    const token = req.cookies?.refresh_token as string | undefined
+      ?? req.body?.refreshToken as string | undefined;
     if (!token) { res.status(401).json({ error: 'No refresh token' }); return; }
 
     let payload;
@@ -153,7 +157,7 @@ router.post('/refresh', async (req: Request, res: Response) => {
     });
 
     setCookies(res, newAccess, newRefresh, req);
-    res.json({ ok: true });
+    res.json({ ok: true, accessToken: newAccess, refreshToken: newRefresh });
   } catch (err) {
     logger.error('Refresh error', { err });
     res.status(500).json({ error: 'Internal server error' });

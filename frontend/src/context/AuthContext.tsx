@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { api } from '../services/api';
+import { api, TOKEN_KEY, REFRESH_KEY } from '../services/api';
 
 interface User {
   id: string;
@@ -31,6 +31,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(data.user);
     } catch {
       setUser(null);
+      localStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem(REFRESH_KEY);
     } finally {
       setLoading(false);
     }
@@ -40,11 +42,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (email: string, password: string) => {
     const { data } = await api.post('/auth/login', { email, password });
+    // Store tokens in localStorage for cross-domain support
+    if (data.accessToken)  localStorage.setItem(TOKEN_KEY,   data.accessToken);
+    if (data.refreshToken) localStorage.setItem(REFRESH_KEY, data.refreshToken);
     setUser(data.user);
   };
 
   const logout = async () => {
     try { await api.post('/auth/logout'); } catch { /* ignore */ }
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(REFRESH_KEY);
     setUser(null);
     window.location.href = '/login';
   };
