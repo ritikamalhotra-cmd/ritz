@@ -21,7 +21,7 @@ async function runAtsSync(label: string) {
   try {
     logger.info(`ATS sheet sync starting (${label})…`);
     const result = await syncFromAtsSheet();
-    logger.info(`ATS sheet sync done (${label})`, result);
+    logger.info(`ATS sheet sync done (${label})`, { ...result });
   } catch (err) {
     logger.error(`ATS sheet sync failed (${label})`, { err });
   }
@@ -39,7 +39,7 @@ function scheduleNightlyOfferSync() {
     try {
       logger.info('Running nightly offer Google Sheets sync…');
       const result = await syncFromSheet();
-      logger.info('Offer sheet sync complete', result);
+      logger.info('Offer sheet sync complete', { ...result });
     } catch (err) {
       logger.error('Offer sheet sync failed', { err });
     } finally {

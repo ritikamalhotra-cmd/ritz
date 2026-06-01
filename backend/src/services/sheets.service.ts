@@ -221,6 +221,6 @@ export async function syncFromSheet(): Promise<SyncResult> {
     }
   }
 
-  logger.info('Sheet sync complete', result);
+  logger.info('Sheet sync complete', { ...result });
   return result;
 }

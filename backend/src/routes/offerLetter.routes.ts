@@ -20,7 +20,7 @@ router.get('/candidate/:caseId', authenticateCandidate, async (req: Request, res
   try {
     const offerLetter = await db.offerLetter.findFirst({
       where: {
-        offerCaseId: req.params.caseId,
+        offerCaseId: String(req.params.caseId),
         offerCase: { candidate: { id: req.candidate!.id } },
         status: { in: ['RELEASED', 'SIGNED'] },
       },
@@ -44,7 +44,7 @@ router.post('/candidate/:caseId/sign', authenticateCandidate, validate(signSchem
     const { signatureName } = req.body;
     const offerLetter = await db.offerLetter.findFirst({
       where: {
-        offerCaseId: req.params.caseId,
+        offerCaseId: String(req.params.caseId),
         offerCase: { candidate: { id: req.candidate!.id } },
         status: 'RELEASED',
       },
@@ -62,12 +62,12 @@ router.post('/candidate/:caseId/sign', authenticateCandidate, validate(signSchem
           signatureUserAgent: req.headers['user-agent'],
         },
       });
-      await tx.offerCase.update({ where: { id: req.params.caseId }, data: { status: 'ACCEPTED', acceptedAt: new Date() } });
-      await tx.onboardingCase.create({ data: { offerCaseId: req.params.caseId, status: 'PENDING' } });
+      await tx.offerCase.update({ where: { id: String(req.params.caseId) }, data: { status: 'ACCEPTED', acceptedAt: new Date() } });
+      await tx.onboardingCase.create({ data: { offerCaseId: String(req.params.caseId), status: 'PENDING' } });
     });
 
     // Regenerate PDF with signature block asynchronously
-    generateLetterForOfferCase(req.params.caseId, undefined, 'Candidate e-signed').catch((e) =>
+    generateLetterForOfferCase(String(req.params.caseId), undefined, 'Candidate e-signed').catch((e) =>
       logger.error('Re-sign PDF error', { e }),
     );
 
@@ -82,13 +82,13 @@ router.post('/candidate/:caseId/sign', authenticateCandidate, validate(signSchem
 router.post('/candidate/:caseId/decline', authenticateCandidate, async (req: Request, res: Response) => {
   try {
     const offerLetter = await db.offerLetter.findFirst({
-      where: { offerCaseId: req.params.caseId, offerCase: { candidate: { id: req.candidate!.id } }, status: 'RELEASED' },
+      where: { offerCaseId: String(req.params.caseId), offerCase: { candidate: { id: req.candidate!.id } }, status: 'RELEASED' },
     });
     if (!offerLetter) { res.status(404).json({ error: 'Offer not found' }); return; }
 
     await db.$transaction(async (tx) => {
       await tx.offerLetter.update({ where: { id: offerLetter.id }, data: { status: 'DECLINED', candidateDeclinedAt: new Date() } });
-      await tx.offerCase.update({ where: { id: req.params.caseId }, data: { status: 'DECLINED', declinedAt: new Date() } });
+      await tx.offerCase.update({ where: { id: String(req.params.caseId) }, data: { status: 'DECLINED', declinedAt: new Date() } });
     });
     res.json({ ok: true });
   } catch (err) {
@@ -106,7 +106,7 @@ router.post(
   authorize('TA_MANAGER', 'ADMIN', 'SUPER_ADMIN'),
   async (req: Request, res: Response) => {
     try {
-      const { offerLetterId, pdfPath } = await generateLetterForOfferCase(req.params.caseId, req.user!.id);
+      const { offerLetterId, pdfPath } = await generateLetterForOfferCase(String(req.params.caseId), req.user!.id);
       res.json({ offerLetterId, pdfPath });
     } catch (err) {
       logger.error('Generate letter error', { err });
@@ -122,7 +122,7 @@ router.post(
   async (req: Request, res: Response) => {
     try {
       const offerLetter = await db.offerLetter.findFirst({
-        where: { offerCaseId: req.params.caseId, status: 'DRAFT' },
+        where: { offerCaseId: String(req.params.caseId), status: 'DRAFT' },
       });
       if (!offerLetter) { res.status(404).json({ error: 'Draft offer letter not found' }); return; }
 
@@ -131,7 +131,7 @@ router.post(
           where: { id: offerLetter.id },
           data: { status: 'RELEASED', releasedAt: new Date(), releasedById: req.user!.id },
         });
-        await tx.offerCase.update({ where: { id: req.params.caseId }, data: { status: 'OFFER_RELEASED', offerReleasedAt: new Date() } });
+        await tx.offerCase.update({ where: { id: String(req.params.caseId) }, data: { status: 'OFFER_RELEASED', offerReleasedAt: new Date() } });
       });
       // TODO: send offer-released email to candidate
       res.json({ ok: true });
@@ -146,7 +146,7 @@ router.post(
 router.get('/pdf/:caseId', authenticate, async (req: Request, res: Response) => {
   try {
     const offerLetter = await db.offerLetter.findFirst({
-      where: { offerCaseId: req.params.caseId },
+      where: { offerCaseId: String(req.params.caseId) },
       select: { pdfPath: true },
     });
     if (!offerLetter?.pdfPath) { res.status(404).json({ error: 'PDF not found' }); return; }

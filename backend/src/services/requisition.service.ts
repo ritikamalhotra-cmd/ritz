@@ -95,7 +95,7 @@ export async function createRequisition(data: {
 export async function submitRequisition(reqId: string, actorId: string) {
   const req = await db.requisition.findUnique({ where: { id: reqId } });
   if (!req) throw new Error('Requisition not found');
-  if (req.status !== 'DRAFT' && req.status !== 'SENT_BACK') {
+  if (req.status !== 'DRAFT' && req.status !== ('SENT_BACK' as any)) {
     throw new Error(`Cannot submit a requisition with status ${req.status}`);
   }
 

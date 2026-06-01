@@ -22,7 +22,7 @@ router.post(
   authorize('RECRUITER', 'TA_MANAGER', 'ADMIN', 'SUPER_ADMIN'),
   async (req: Request, res: Response) => {
     try {
-      const offer = await db.offerCase.findUnique({ where: { id: req.params.offerCaseId } });
+      const offer = await db.offerCase.findUnique({ where: { id: String(req.params.offerCaseId) } });
       if (!offer) { res.status(404).json({ error: 'Offer not found' }); return; }
       if (offer.status !== 'DRAFT' && !offer.status.startsWith('SENT_BACK')) {
         res.status(422).json({ error: 'Offer cannot be submitted in current status' }); return;
@@ -108,7 +108,7 @@ router.post(
   validate(approvalActionSchema),
   async (req: Request, res: Response) => {
     try {
-      await handleApprovalAction(req.params.id, req.user!.id, req.user!.role, req.body);
+      await handleApprovalAction(String(req.params.id), req.user!.id, req.user!.role, req.body);
       res.json({ ok: true });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Internal server error';

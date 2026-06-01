@@ -75,7 +75,7 @@ export async function createCalendarEvent(input: CalendarEventInput): Promise<Ca
 
     return {
       eventId:  res.data.id!,
-      meetLink: res.data.conferenceData?.entryPoints?.[0]?.uri,
+      meetLink: res.data.conferenceData?.entryPoints?.[0]?.uri ?? undefined,
       htmlLink: res.data.htmlLink ?? undefined,
     };
   } catch (err) {

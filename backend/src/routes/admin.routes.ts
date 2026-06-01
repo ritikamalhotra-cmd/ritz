@@ -72,7 +72,7 @@ router.post('/users', validate(createUserSchema), async (req: Request, res: Resp
 router.patch('/users/:id', validate(updateUserSchema), async (req: Request, res: Response) => {
   try {
     const user = await db.user.update({
-      where: { id: req.params.id },
+      where: { id: String(req.params.id) },
       data: req.body,
       select: { id: true, email: true, firstName: true, lastName: true, role: true, department: true, isActive: true },
     });
@@ -85,7 +85,7 @@ router.patch('/users/:id', validate(updateUserSchema), async (req: Request, res:
 // DELETE /api/admin/users/:id (deactivate, not hard delete)
 router.delete('/users/:id', async (req: Request, res: Response) => {
   try {
-    await db.user.update({ where: { id: req.params.id }, data: { isActive: false } });
+    await db.user.update({ where: { id: String(req.params.id) }, data: { isActive: false } });
     res.json({ ok: true });
   } catch {
     res.status(404).json({ error: 'User not found' });
