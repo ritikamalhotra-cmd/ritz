@@ -14,22 +14,14 @@ export const api = axios.create({
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem(TOKEN_KEY);
   if (token) config.headers.Authorization = `Bearer ${token}`;
-
-  // CSRF for cookie-based sessions (local dev fallback)
-  if (['post', 'put', 'patch', 'delete'].includes(config.method ?? '')) {
-    const csrf = document.cookie
-      .split('; ')
-      .find((r) => r.startsWith('csrf_token='))
-      ?.split('=')[1];
-    if (csrf) config.headers['X-CSRF-Token'] = csrf;
-  }
   return config;
 });
 
-// Auth endpoints that should never trigger auto-refresh
-const AUTH_ENDPOINTS = ['/auth/login', '/auth/refresh', '/auth/me'];
+// Auth endpoints — never auto-refresh on these
+const AUTH_ENDPOINTS = ['/auth/login', '/auth/refresh', '/auth/me', '/auth/logout'];
 
 let refreshing = false;
+let refreshPromise: Promise<void> | null = null;
 
 api.interceptors.response.use(
   (r) => r,
@@ -37,28 +29,45 @@ api.interceptors.response.use(
     const original = err.config;
     const isAuthEndpoint = AUTH_ENDPOINTS.some(e => original?.url?.includes(e));
 
-    // Only auto-refresh on 401 for non-auth endpoints
-    if (err.response?.status === 401 && !original._retry && !refreshing && !isAuthEndpoint) {
+    if (err.response?.status === 401 && !original._retry && !isAuthEndpoint) {
       original._retry = true;
-      refreshing = true;
-      try {
-        const refreshToken = localStorage.getItem(REFRESH_KEY);
-        if (!refreshToken) throw new Error('No refresh token');
 
-        const res = await api.post('/auth/refresh', { refreshToken });
-        if (res.data.accessToken) {
-          localStorage.setItem(TOKEN_KEY,   res.data.accessToken);
-          localStorage.setItem(REFRESH_KEY, res.data.refreshToken);
-        }
-        refreshing = false;
+      // If already refreshing, wait for the same refresh to finish
+      if (refreshing && refreshPromise) {
+        await refreshPromise;
         return api(original);
-      } catch {
-        refreshing = false;
+      }
+
+      const refreshToken = localStorage.getItem(REFRESH_KEY);
+      if (!refreshToken) {
+        // No refresh token — clear storage and let React Router handle redirect
         localStorage.removeItem(TOKEN_KEY);
         localStorage.removeItem(REFRESH_KEY);
-        window.location.href = '/login';
+        return Promise.reject(err);
       }
+
+      refreshing = true;
+      refreshPromise = api
+        .post('/auth/refresh', { refreshToken })
+        .then((res) => {
+          if (res.data.accessToken) {
+            localStorage.setItem(TOKEN_KEY,   res.data.accessToken);
+            localStorage.setItem(REFRESH_KEY, res.data.refreshToken);
+          }
+        })
+        .catch(() => {
+          localStorage.removeItem(TOKEN_KEY);
+          localStorage.removeItem(REFRESH_KEY);
+        })
+        .finally(() => {
+          refreshing = false;
+          refreshPromise = null;
+        });
+
+      await refreshPromise;
+      return api(original);
     }
+
     return Promise.reject(err);
   },
 );

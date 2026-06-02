@@ -53,7 +53,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(REFRESH_KEY);
     setUser(null);
-    window.location.href = '/login';
+    // Let ProtectedRoute handle redirect — no full page reload needed
   };
 
   return (
