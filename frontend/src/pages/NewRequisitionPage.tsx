@@ -239,69 +239,60 @@ export default function NewRequisitionPage() {
           )}
         </section>
 
-        {/* ── Section: Budget & Priority — HM/Admin only ────────── */}
-        {canSetBudget ? (
-          <section className="card p-6 space-y-5">
-            <h2 className="text-base font-semibold text-gray-800 border-b border-gray-100 pb-3">Budget & Priority</h2>
-            <div className="grid grid-cols-2 gap-5">
-              <div>
-                <label className="label">Budget Min (Annual CTC ₹)</label>
-                <input
-                  type="number"
-                  className="input"
-                  placeholder="e.g., 1200000"
-                  value={form.budgetedCTCMin}
-                  onChange={(e) => set('budgetedCTCMin', e.target.value)}
-                />
-              </div>
-              <div>
-                <label className="label">Budget Max (Annual CTC ₹)</label>
-                <input
-                  type="number"
-                  className="input"
-                  placeholder="e.g., 2000000"
-                  value={form.budgetedCTCMax}
-                  onChange={(e) => set('budgetedCTCMax', e.target.value)}
-                />
-              </div>
-              <div>
-                <label className="label">Priority</label>
-                <select className="input" value={form.priority} onChange={(e) => set('priority', e.target.value)}>
-                  <option value="CRITICAL">🔴 Critical</option>
-                  <option value="HIGH">🟠 High</option>
-                  <option value="MEDIUM">🟡 Medium</option>
-                  <option value="LOW">⚪ Low</option>
-                </select>
-              </div>
-              <div>
-                <label className="label">Target Closure Date</label>
-                <input
-                  type="date"
-                  className="input"
-                  value={form.targetClosureDate}
-                  onChange={(e) => set('targetClosureDate', e.target.value)}
-                />
-              </div>
-            </div>
+        {/* ── Section: Budget & Priority ─────────────────────────── */}
+        <section className="card p-6 space-y-5">
+          <h2 className="text-base font-semibold text-gray-800 border-b border-gray-100 pb-3">Budget & Priority</h2>
+          <div className="grid grid-cols-2 gap-5">
             <div>
-              <label className="label">Hiring Reason / Business Case</label>
-              <textarea
-                rows={3}
+              <label className="label">Budget Min (Annual CTC ₹)</label>
+              <input
+                type="number"
                 className="input"
-                placeholder="Why is this role needed? What business problem does it solve?"
-                value={form.hiringReason}
-                onChange={(e) => set('hiringReason', e.target.value)}
+                placeholder="e.g., 1200000"
+                value={form.budgetedCTCMin}
+                onChange={(e) => set('budgetedCTCMin', e.target.value)}
               />
             </div>
-          </section>
-        ) : (
-          <section className="card p-6">
-            <div className="flex items-center gap-3 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
-              <span>💡</span>
-              <span>Budget and priority will be set by the Hiring Manager during approval.</span>
+            <div>
+              <label className="label">Budget Max (Annual CTC ₹)</label>
+              <input
+                type="number"
+                className="input"
+                placeholder="e.g., 2000000"
+                value={form.budgetedCTCMax}
+                onChange={(e) => set('budgetedCTCMax', e.target.value)}
+              />
             </div>
-          </section>
-        )}
+            <div>
+              <label className="label">Priority</label>
+              <select className="input" value={form.priority} onChange={(e) => set('priority', e.target.value)}>
+                <option value="CRITICAL">🔴 Critical</option>
+                <option value="HIGH">🟠 High</option>
+                <option value="MEDIUM">🟡 Medium</option>
+                <option value="LOW">⚪ Low</option>
+              </select>
+            </div>
+            <div>
+              <label className="label">Target Closure Date</label>
+              <input
+                type="date"
+                className="input"
+                value={form.targetClosureDate}
+                onChange={(e) => set('targetClosureDate', e.target.value)}
+              />
+            </div>
+          </div>
+          <div>
+            <label className="label">Hiring Reason / Business Case</label>
+            <textarea
+              rows={3}
+              className="input"
+              placeholder="Why is this role needed? What business problem does it solve?"
+              value={form.hiringReason}
+              onChange={(e) => set('hiringReason', e.target.value)}
+            />
+          </div>
+        </section>
 
         {/* ── Section: JD ───────────────────────────────────────── */}
         <section className="card p-6 space-y-5">
