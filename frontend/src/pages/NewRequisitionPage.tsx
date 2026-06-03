@@ -45,7 +45,7 @@ export default function NewRequisitionPage() {
   // Fetch users for dropdown assignment
   const { data: users = [] } = useQuery<any[]>({
     queryKey: ['users-for-req'],
-    queryFn: () => api.get('/admin/users').then((r) => r.data.users ?? r.data),
+    queryFn: () => api.get('/users').then((r) => r.data.users ?? r.data),
   });
 
   const hiringManagers = users.filter((u: any) => ['HIRING_MANAGER', 'HOD', 'ADMIN', 'SUPER_ADMIN'].includes(u.role));

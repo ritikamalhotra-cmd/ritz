@@ -14,6 +14,7 @@ import requisitionRoutes from './routes/requisition.routes';
 import applicationRoutes from './routes/application.routes';
 import analyticsRoutes from './routes/analytics.routes';
 import careersRoutes from './routes/careers.routes';
+import usersRoutes from './routes/users.routes';
 import { startScheduler } from './workers/scheduler';
 import { seedDefaultTemplatesIfMissing } from './services/offerLetter.service';
 import { db } from './utils/db';
@@ -49,6 +50,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/requisitions', requisitionRoutes);
 app.use('/api/applications', applicationRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/users', usersRoutes);
 app.use('/api/careers', careersRoutes); // public — no auth middleware
 
 // ── 404 ──
