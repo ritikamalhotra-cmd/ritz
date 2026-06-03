@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { api } from '../services/api';
 import Layout from '../components/common/Layout';
+import { useAuth } from '../context/AuthContext';
 import { ArrowLeft, Send } from 'lucide-react';
 
 const DEPARTMENTS = [
@@ -14,6 +15,8 @@ const GRADES = ['L1', 'L2', 'L3', 'L4', 'L5', 'L6', 'L7', 'L8', 'VP', 'SVP', 'EV
 
 export default function NewRequisitionPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const canSetBudget = ['HIRING_MANAGER', 'HOD', 'HR_HEAD', 'ADMIN', 'SUPER_ADMIN', 'TA_MANAGER'].includes(user?.role ?? '');
 
   const [form, setForm] = useState({
     title: '',
@@ -236,60 +239,69 @@ export default function NewRequisitionPage() {
           )}
         </section>
 
-        {/* ── Section: Budget & Priority ─────────────────────────── */}
-        <section className="card p-6 space-y-5">
-          <h2 className="text-base font-semibold text-gray-800 border-b border-gray-100 pb-3">Budget & Priority</h2>
-          <div className="grid grid-cols-2 gap-5">
+        {/* ── Section: Budget & Priority — HM/Admin only ────────── */}
+        {canSetBudget ? (
+          <section className="card p-6 space-y-5">
+            <h2 className="text-base font-semibold text-gray-800 border-b border-gray-100 pb-3">Budget & Priority</h2>
+            <div className="grid grid-cols-2 gap-5">
+              <div>
+                <label className="label">Budget Min (Annual CTC ₹)</label>
+                <input
+                  type="number"
+                  className="input"
+                  placeholder="e.g., 1200000"
+                  value={form.budgetedCTCMin}
+                  onChange={(e) => set('budgetedCTCMin', e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="label">Budget Max (Annual CTC ₹)</label>
+                <input
+                  type="number"
+                  className="input"
+                  placeholder="e.g., 2000000"
+                  value={form.budgetedCTCMax}
+                  onChange={(e) => set('budgetedCTCMax', e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="label">Priority</label>
+                <select className="input" value={form.priority} onChange={(e) => set('priority', e.target.value)}>
+                  <option value="CRITICAL">🔴 Critical</option>
+                  <option value="HIGH">🟠 High</option>
+                  <option value="MEDIUM">🟡 Medium</option>
+                  <option value="LOW">⚪ Low</option>
+                </select>
+              </div>
+              <div>
+                <label className="label">Target Closure Date</label>
+                <input
+                  type="date"
+                  className="input"
+                  value={form.targetClosureDate}
+                  onChange={(e) => set('targetClosureDate', e.target.value)}
+                />
+              </div>
+            </div>
             <div>
-              <label className="label">Budget Min (Annual CTC ₹)</label>
-              <input
-                type="number"
+              <label className="label">Hiring Reason / Business Case</label>
+              <textarea
+                rows={3}
                 className="input"
-                placeholder="e.g., 1200000"
-                value={form.budgetedCTCMin}
-                onChange={(e) => set('budgetedCTCMin', e.target.value)}
+                placeholder="Why is this role needed? What business problem does it solve?"
+                value={form.hiringReason}
+                onChange={(e) => set('hiringReason', e.target.value)}
               />
             </div>
-            <div>
-              <label className="label">Budget Max (Annual CTC ₹)</label>
-              <input
-                type="number"
-                className="input"
-                placeholder="e.g., 2000000"
-                value={form.budgetedCTCMax}
-                onChange={(e) => set('budgetedCTCMax', e.target.value)}
-              />
+          </section>
+        ) : (
+          <section className="card p-6">
+            <div className="flex items-center gap-3 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
+              <span>💡</span>
+              <span>Budget and priority will be set by the Hiring Manager during approval.</span>
             </div>
-            <div>
-              <label className="label">Priority</label>
-              <select className="input" value={form.priority} onChange={(e) => set('priority', e.target.value)}>
-                <option value="CRITICAL">🔴 Critical</option>
-                <option value="HIGH">🟠 High</option>
-                <option value="MEDIUM">🟡 Medium</option>
-                <option value="LOW">⚪ Low</option>
-              </select>
-            </div>
-            <div>
-              <label className="label">Target Closure Date</label>
-              <input
-                type="date"
-                className="input"
-                value={form.targetClosureDate}
-                onChange={(e) => set('targetClosureDate', e.target.value)}
-              />
-            </div>
-          </div>
-          <div>
-            <label className="label">Hiring Reason / Business Case</label>
-            <textarea
-              rows={3}
-              className="input"
-              placeholder="Why is this role needed? What business problem does it solve?"
-              value={form.hiringReason}
-              onChange={(e) => set('hiringReason', e.target.value)}
-            />
-          </div>
-        </section>
+          </section>
+        )}
 
         {/* ── Section: JD ───────────────────────────────────────── */}
         <section className="card p-6 space-y-5">

@@ -57,6 +57,8 @@ export default function RequisitionDetailPage() {
   const qc = useQueryClient();
   const [comment, setComment] = useState('');
   const [showCommentFor, setShowCommentFor] = useState<'approve' | 'reject' | 'send_back' | null>(null);
+  const [budget, setBudget] = useState({ min: '', max: '', priority: 'MEDIUM' });
+  const canSetBudget = ['HIRING_MANAGER', 'HOD', 'HR_HEAD', 'ADMIN', 'SUPER_ADMIN'].includes(user?.role ?? '');
 
   const { data: req, isLoading } = useQuery<any>({
     queryKey: ['requisition', id],
@@ -74,8 +76,18 @@ export default function RequisitionDetailPage() {
   });
 
   const approveMutation = useMutation({
-    mutationFn: (comment?: string) => api.post(`/requisitions/${id}/approve`, { comment }).then((r) => r.data),
-    onSuccess: () => { invalidate(); setShowCommentFor(null); setComment(''); },
+    mutationFn: async (comment?: string) => {
+      // If HM is approving and has set budget, save it first
+      if (canSetBudget && (budget.min || budget.max)) {
+        await api.patch(`/requisitions/${id}`, {
+          budgetedCTCMin: budget.min ? Number(budget.min) : undefined,
+          budgetedCTCMax: budget.max ? Number(budget.max) : undefined,
+          priority: budget.priority,
+        });
+      }
+      return api.post(`/requisitions/${id}/approve`, { comment }).then((r) => r.data);
+    },
+    onSuccess: () => { invalidate(); setShowCommentFor(null); setComment(''); setBudget({ min: '', max: '', priority: 'MEDIUM' }); },
   });
 
   const rejectMutation = useMutation({
@@ -206,8 +218,31 @@ export default function RequisitionDetailPage() {
         )}
 
         {canAct && !showCommentFor && (
-          <div className="card p-4 bg-brand-50 border border-brand-200">
-            <p className="text-sm font-medium text-brand-800 mb-3">This requisition requires your approval.</p>
+          <div className="card p-4 bg-brand-50 border border-brand-200 space-y-4">
+            <p className="text-sm font-medium text-brand-800">This requisition requires your approval.</p>
+            {canSetBudget && !req.budgetedCTCMax && (
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="label">Budget Min (₹)</label>
+                  <input type="number" className="input" placeholder="e.g. 1200000"
+                    value={budget.min} onChange={e => setBudget(b => ({ ...b, min: e.target.value }))} />
+                </div>
+                <div>
+                  <label className="label">Budget Max (₹)</label>
+                  <input type="number" className="input" placeholder="e.g. 2000000"
+                    value={budget.max} onChange={e => setBudget(b => ({ ...b, max: e.target.value }))} />
+                </div>
+                <div>
+                  <label className="label">Priority</label>
+                  <select className="input" value={budget.priority} onChange={e => setBudget(b => ({ ...b, priority: e.target.value }))}>
+                    <option value="CRITICAL">🔴 Critical</option>
+                    <option value="HIGH">🟠 High</option>
+                    <option value="MEDIUM">🟡 Medium</option>
+                    <option value="LOW">⚪ Low</option>
+                  </select>
+                </div>
+              </div>
+            )}
             <div className="flex gap-3">
               <button
                 onClick={() => setShowCommentFor('approve')}
