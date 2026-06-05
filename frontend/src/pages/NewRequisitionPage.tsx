@@ -51,9 +51,10 @@ export default function NewRequisitionPage() {
     queryFn: () => api.get('/users').then((r) => r.data.users ?? r.data),
   });
 
-  const hiringManagers = users.filter((u: any) => ['HIRING_MANAGER', 'HOD', 'ADMIN', 'SUPER_ADMIN'].includes(u.role));
-  const hods = users.filter((u: any) => ['HOD', 'ADMIN', 'SUPER_ADMIN'].includes(u.role));
-  const recruiters = users.filter((u: any) => ['RECRUITER', 'TA_MANAGER', 'ADMIN', 'SUPER_ADMIN'].includes(u.role));
+  // Strict role-based filtering for each dropdown
+  const hiringManagers = users.filter((u: any) => u.role === 'HIRING_MANAGER');
+  const hods = users.filter((u: any) => u.role === 'HOD');
+  const recruiters = users.filter((u: any) => u.role === 'RECRUITER' || u.role === 'TA_MANAGER');
 
   const createMutation = useMutation({
     mutationFn: (data: any) => api.post('/requisitions', data).then((r) => r.data),

@@ -43,11 +43,10 @@ const APPROVER_LABELS: Record<string, string> = {
 
 // Which status means this role is the active approver
 const ROLE_TO_PENDING: Record<string, string[]> = {
-  HIRING_MANAGER: ['PENDING_HM_APPROVAL'],
-  HOD:            ['PENDING_HOD_APPROVAL'],
-  HR_HEAD:        ['PENDING_HR_HEAD_APPROVAL'],
-  SUPER_ADMIN:    ['PENDING_HM_APPROVAL', 'PENDING_HOD_APPROVAL', 'PENDING_HR_HEAD_APPROVAL', 'PENDING_CEO_APPROVAL'],
-  ADMIN:          ['PENDING_HM_APPROVAL', 'PENDING_HOD_APPROVAL', 'PENDING_HR_HEAD_APPROVAL', 'PENDING_CEO_APPROVAL'],
+  HOD:         ['PENDING_HOD_APPROVAL'],
+  HR_HEAD:     ['PENDING_HR_HEAD_APPROVAL'],
+  SUPER_ADMIN: ['PENDING_HOD_APPROVAL', 'PENDING_HR_HEAD_APPROVAL', 'PENDING_CEO_APPROVAL'],
+  ADMIN:       ['PENDING_HOD_APPROVAL', 'PENDING_HR_HEAD_APPROVAL', 'PENDING_CEO_APPROVAL'],
 };
 
 export default function RequisitionDetailPage() {
@@ -58,6 +57,8 @@ export default function RequisitionDetailPage() {
   const [comment, setComment] = useState('');
   const [showCommentFor, setShowCommentFor] = useState<'approve' | 'reject' | 'send_back' | null>(null);
   const [budget, setBudget] = useState({ min: '', max: '', priority: 'MEDIUM' });
+  const [showEdit, setShowEdit] = useState(false);
+  const [editForm, setEditForm] = useState<Record<string, any>>({});
   const canSetBudget = ['HIRING_MANAGER', 'HOD', 'HR_HEAD', 'ADMIN', 'SUPER_ADMIN'].includes(user?.role ?? '');
 
   const { data: req, isLoading } = useQuery<any>({
@@ -119,9 +120,16 @@ export default function RequisitionDetailPage() {
   const pendingStatuses = ROLE_TO_PENDING[user?.role ?? ''] ?? [];
   const canAct = pendingStatuses.includes(req.status);
   const canSubmit = req.status === 'DRAFT' &&
-    ['RECRUITER', 'TA_MANAGER', 'HIRING_MANAGER', 'ADMIN', 'SUPER_ADMIN'].includes(user?.role ?? '');
+    ['RECRUITER', 'TA_MANAGER', 'HIRING_MANAGER', 'HOD', 'HR_HEAD', 'ADMIN', 'SUPER_ADMIN'].includes(user?.role ?? '');
+  const canEdit = req.status === 'DRAFT' &&
+    ['RECRUITER', 'TA_MANAGER', 'HIRING_MANAGER', 'HOD', 'HR_HEAD', 'ADMIN', 'SUPER_ADMIN'].includes(user?.role ?? '');
 
   const isBusy = approveMutation.isPending || rejectMutation.isPending || sendBackMutation.isPending || submitMutation.isPending;
+
+  const editMutation = useMutation({
+    mutationFn: (data: Record<string, any>) => api.patch(`/requisitions/${id}`, data).then(r => r.data),
+    onSuccess: () => { invalidate(); setShowEdit(false); },
+  });
 
   const fmt = (n?: number) => n ? `₹${(n / 100000).toFixed(1)}L` : '—';
   const fmtDate = (d?: string) => d ? new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
@@ -203,17 +211,64 @@ export default function RequisitionDetailPage() {
           </div>
         )}
 
-        {/* Approval actions */}
+        {/* Draft actions — edit + submit */}
         {canSubmit && (
-          <div className="card p-4 flex items-center justify-between">
-            <p className="text-sm text-gray-600">This requisition is in draft. Submit it to start the approval process.</p>
-            <button
-              onClick={() => submitMutation.mutate()}
-              disabled={isBusy}
-              className="btn-primary"
-            >
-              <Send size={15} /> Submit for Approval
-            </button>
+          <div className="card p-4 space-y-4">
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-gray-600">
+                This requisition is in draft.
+                {req.approvalSteps?.some((s: any) => s.status === 'SENT_BACK') && (
+                  <span className="ml-2 text-orange-600 font-medium">Sent back for revision.</span>
+                )}
+              </p>
+              <div className="flex gap-2">
+                {canEdit && (
+                  <button onClick={() => { setShowEdit(!showEdit); setEditForm({ budgetedCTCMin: req.budgetedCTCMin || '', budgetedCTCMax: req.budgetedCTCMax || '', priority: req.priority || 'MEDIUM', hiringReason: req.hiringReason || '' }); }}
+                    className="btn-secondary">
+                    {showEdit ? 'Cancel Edit' : '✏️ Edit'}
+                  </button>
+                )}
+                <button onClick={() => submitMutation.mutate()} disabled={isBusy} className="btn-primary">
+                  <Send size={15} /> Submit for Approval
+                </button>
+              </div>
+            </div>
+            {showEdit && (
+              <div className="border-t border-gray-100 pt-4 space-y-3">
+                <p className="text-xs font-semibold text-gray-500 uppercase">Edit Requisition</p>
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <label className="label">Budget Min (₹)</label>
+                    <input type="number" className="input" value={editForm.budgetedCTCMin}
+                      onChange={e => setEditForm((f: any) => ({ ...f, budgetedCTCMin: e.target.value }))} />
+                  </div>
+                  <div>
+                    <label className="label">Budget Max (₹)</label>
+                    <input type="number" className="input" value={editForm.budgetedCTCMax}
+                      onChange={e => setEditForm((f: any) => ({ ...f, budgetedCTCMax: e.target.value }))} />
+                  </div>
+                  <div>
+                    <label className="label">Priority</label>
+                    <select className="input" value={editForm.priority}
+                      onChange={e => setEditForm((f: any) => ({ ...f, priority: e.target.value }))}>
+                      <option value="CRITICAL">🔴 Critical</option>
+                      <option value="HIGH">🟠 High</option>
+                      <option value="MEDIUM">🟡 Medium</option>
+                      <option value="LOW">⚪ Low</option>
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label className="label">Hiring Reason / Business Case</label>
+                  <textarea rows={2} className="input" value={editForm.hiringReason}
+                    onChange={e => setEditForm((f: any) => ({ ...f, hiringReason: e.target.value }))} />
+                </div>
+                <button onClick={() => editMutation.mutate({ budgetedCTCMin: editForm.budgetedCTCMin ? Number(editForm.budgetedCTCMin) : undefined, budgetedCTCMax: editForm.budgetedCTCMax ? Number(editForm.budgetedCTCMax) : undefined, priority: editForm.priority, hiringReason: editForm.hiringReason })}
+                  disabled={editMutation.isPending} className="btn-primary">
+                  {editMutation.isPending ? 'Saving…' : 'Save Changes'}
+                </button>
+              </div>
+            )}
           </div>
         )}
 
