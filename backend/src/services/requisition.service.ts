@@ -156,7 +156,18 @@ export async function actOnRequisitionStep(opts: {
   if (!activeStep) throw new Error('No pending approval step');
 
   const isSuperUser = ['ADMIN', 'SUPER_ADMIN'].includes(actorRole);
-  if (activeStep.approverRole !== actorRole && !isSuperUser) {
+
+  // Map user role → approval chain key (e.g. HIRING_MANAGER → HM)
+  const ACTOR_ROLE_MAP: Record<string, string> = {
+    HIRING_MANAGER: 'HM',
+    HOD:            'HOD',
+    HR_HEAD:        'HR_HEAD',
+    SUPER_ADMIN:    'CEO',
+    ADMIN:          'CEO',
+  };
+  const actorChainRole = ACTOR_ROLE_MAP[actorRole] ?? actorRole;
+
+  if (activeStep.approverRole !== actorChainRole && !isSuperUser) {
     throw new Error(`This step requires role ${activeStep.approverRole}`);
   }
 
@@ -220,12 +231,18 @@ export async function listRequisitions(filters: {
 
   // Role-based scoping
   if (role === 'HIRING_MANAGER') {
+    // HM sees only reqs they are assigned to as Hiring Manager
     where.hiringManagerId = userId;
-  } else if (role === 'RECRUITER') {
-    where.recruiterId = userId;
+  } else if (role === 'RECRUITER' || role === 'TA_MANAGER') {
+    // Recruiter sees reqs they created OR are assigned as recruiter on
+    where.OR = [
+      { createdById: userId },
+      { recruiterId: userId },
+    ];
   } else if (role === 'HOD') {
     where.hodId = userId;
   }
+  // HR_HEAD, ADMIN, SUPER_ADMIN see all reqs
 
   if (hiringManagerId) where.hiringManagerId = hiringManagerId;
   if (recruiterId) where.recruiterId = recruiterId;
