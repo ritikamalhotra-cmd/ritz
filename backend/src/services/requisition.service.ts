@@ -265,7 +265,12 @@ export async function getRequisition(id: string) {
 export async function updateRequisition(id: string, data: Partial<Parameters<typeof createRequisition>[0]>) {
   const req = await db.requisition.findUnique({ where: { id } });
   if (!req) throw new Error('Not found');
-  if (req.status !== 'DRAFT') throw new Error('Can only edit DRAFT requisitions');
+  // Allow budget/priority updates during approval steps, full edits only in DRAFT
+  const isPendingApproval = req.status.startsWith('PENDING_');
+  const isBudgetOnlyUpdate = data.budgetedCTCMin !== undefined || data.budgetedCTCMax !== undefined || data.priority !== undefined;
+  if (req.status !== 'DRAFT' && !(isPendingApproval && isBudgetOnlyUpdate)) {
+    throw new Error('Can only edit DRAFT requisitions');
+  }
 
   return db.requisition.update({
     where: { id },
