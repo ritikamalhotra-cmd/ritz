@@ -11,7 +11,8 @@ const HIGH_BUDGET = 5_000_000; // 50 LPA
 
 export function buildApprovalChain(grade?: string | null, budgetMax?: number | null): string[] {
   // Keys must match RequisitionStatus enum: PENDING_{KEY}_APPROVAL
-  const chain = ['HM', 'HOD', 'HR_HEAD'];
+  // Chain: HOD → HR_HEAD (HM approval not required)
+  const chain = ['HOD', 'HR_HEAD'];
   if ((grade && SENIOR_GRADES.has(grade)) || (budgetMax && budgetMax >= HIGH_BUDGET)) {
     chain.push('CEO');
   }
