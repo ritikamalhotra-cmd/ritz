@@ -105,10 +105,12 @@ export default function RequisitionDetailPage() {
   const editMutation = useMutation({
     mutationFn: (data: Record<string, any>) => api.patch(`/requisitions/${id}`, data).then(r => r.data),
     onSuccess: (updatedReq) => {
-      // Update the detail cache immediately from the server response so the
-      // new budget/priority values are visible the instant the form closes.
-      qc.setQueryData(['requisition', id], (old: any) => ({ ...old, ...updatedReq }));
-      // Also mark the list stale so the list page reflects the change.
+      // The PATCH response now returns reqFullInclude — same shape as the GET.
+      // Replace the cache entry directly (no merge needed).
+      qc.setQueryData(['requisition', id], updatedReq);
+      // Also trigger a background refetch as a safety net in case the response
+      // was somehow incomplete (e.g. network issue partial body).
+      qc.invalidateQueries({ queryKey: ['requisition', id] });
       qc.invalidateQueries({ queryKey: ['requisitions'] });
       setShowEdit(false);
     },

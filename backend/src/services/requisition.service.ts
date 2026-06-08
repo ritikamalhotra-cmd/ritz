@@ -300,16 +300,50 @@ export async function updateRequisition(id: string, data: Partial<Parameters<typ
     throw new Error('Can only edit DRAFT requisitions');
   }
 
+  // Build update payload explicitly — never blindly spread req.body into Prisma
+  // because unknown keys cause silent Prisma errors that discard the whole update.
+  const updatePayload: Record<string, any> = {};
+
+  // Numeric fields — coerce to Number to guard against JSON string values
+  if (data.budgetedCTCMin !== undefined) updatePayload.budgetedCTCMin = Number(data.budgetedCTCMin);
+  if (data.budgetedCTCMax !== undefined) updatePayload.budgetedCTCMax = Number(data.budgetedCTCMax);
+  if (data.headcount     !== undefined) updatePayload.headcount      = Number(data.headcount);
+
+  // Enum fields
+  if (data.priority       !== undefined) updatePayload.priority       = data.priority;
+  if (data.workMode       !== undefined) updatePayload.workMode       = data.workMode;
+  if (data.employmentType !== undefined) updatePayload.employmentType = data.employmentType;
+
+  // String fields
+  if (data.title          !== undefined) updatePayload.title          = data.title;
+  if (data.department     !== undefined) updatePayload.department     = data.department;
+  if (data.subDepartment  !== undefined) updatePayload.subDepartment  = data.subDepartment;
+  if (data.grade          !== undefined) updatePayload.grade          = data.grade;
+  if (data.level          !== undefined) updatePayload.level          = data.level;
+  if (data.location       !== undefined) updatePayload.location       = data.location;
+  if (data.hiringReason   !== undefined) updatePayload.hiringReason   = data.hiringReason;
+  if (data.jdText         !== undefined) updatePayload.jdText         = data.jdText;
+  if (data.responsibilities !== undefined) updatePayload.responsibilities = data.responsibilities;
+  if (data.requirements   !== undefined) updatePayload.requirements   = data.requirements;
+  if (data.replacementFor !== undefined) updatePayload.replacementFor = data.replacementFor;
+  if (data.isReplacement  !== undefined) updatePayload.isReplacement  = data.isReplacement;
+
+  // Relation IDs
+  if (data.hiringManagerId !== undefined) updatePayload.hiringManagerId = data.hiringManagerId;
+  if (data.hodId           !== undefined) updatePayload.hodId           = data.hodId;
+  if (data.recruiterId     !== undefined) updatePayload.recruiterId     = data.recruiterId;
+
+  // Date field
+  if (data.targetClosureDate !== undefined) {
+    updatePayload.targetClosureDate = data.targetClosureDate ? new Date(data.targetClosureDate) : null;
+  }
+
+  // Return reqFullInclude so the frontend gets the complete data it needs
+  // for the detail page cache — no merge or partial update required.
   return db.requisition.update({
     where: { id },
-    data: {
-      ...data,
-      workMode: data.workMode as any,
-      employmentType: data.employmentType as any,
-      priority: data.priority as any,
-      targetClosureDate: data.targetClosureDate ? new Date(data.targetClosureDate) : undefined,
-    },
-    include: reqInclude,
+    data: updatePayload,
+    include: reqFullInclude,
   });
 }
 
