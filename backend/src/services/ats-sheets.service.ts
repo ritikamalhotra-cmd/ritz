@@ -1,8 +1,12 @@
 // ATS Google Sheets sync — reads sourcing tracker sheet and creates Applications
 // Sheet format (row 1 = headers):
 //   A: Candidate Name | B: Email ID | C: Contact No | D: LinkedIn URL
-//   E: Source         | F: Requisition No (number, e.g. 6) | G: Department
+//   E: Source         | F: Requisition No (REQUIRED — e.g. 6 or REQ-0006) | G: Department (informational only)
 //   H: Current CTC (₹) | I: Expected CTC (₹) | J: Notice Period (days) | K: Notes
+//
+// Matching: requisition number (col F) is the SOLE identifier.
+// Department (col G) is stored for reference but NOT used for fallback matching.
+// Rows with a missing or unrecognised requisition number are skipped.
 
 import { db } from '../utils/db';
 import { logger } from '../utils/logger';
@@ -130,32 +134,30 @@ export async function syncFromAtsSheet(): Promise<AtsSyncResult> {
 
   for (const row of rows) {
     try {
-      // ── Resolve requisition ────────────────────────────────────────────
-      let requisition: any = null;
+      // ── Resolve requisition by number (sole strategy) ──────────────────
+      // Strip any non-digit characters so "REQ-0006", "REQ0006", "6" all
+      // resolve to the integer 6.
+      const reqNum = row.requisitionNo
+        ? parseInt(row.requisitionNo.replace(/\D/g, ''), 10) || null
+        : null;
 
-      // Strategy 1: match by requisition number from col F
-      if (row.requisitionNo) {
-        const num = parseInt(row.requisitionNo.replace(/\D/g, '')) || null;
-        if (num) {
-          requisition = await db.requisition.findFirst({
-            where: { reqNumber: num, status: { in: ['APPROVED', 'OPEN'] } },
-          });
-        }
+      if (!reqNum) {
+        const reason = `col F is blank or not a valid requisition number ("${row.requisitionNo}")`;
+        logger.info(`Skipping ${row.email}: ${reason}`);
+        result.skippedDetails!.push(`${row.candidateName} (${row.email}): ${reason}`);
+        result.skipped++;
+        continue;
       }
 
-      // Strategy 2: match by department name
-      if (!requisition && row.department) {
-        requisition = await db.requisition.findFirst({
-          where: {
-            department: row.department,
-            status: { in: ['APPROVED', 'OPEN'] },
-          },
-          orderBy: { createdAt: 'desc' },
-        });
-      }
+      const requisition = await db.requisition.findFirst({
+        where: {
+          reqNumber: reqNum,
+          status: { in: ['APPROVED', 'OPEN'] },
+        },
+      });
 
       if (!requisition) {
-        const reason = `no open req for dept="${row.department}" or reqNo="${row.requisitionNo}"`;
+        const reason = `REQ-${String(reqNum).padStart(4, '0')} not found or not in APPROVED/OPEN status`;
         logger.info(`Skipping ${row.email}: ${reason}`);
         result.skippedDetails!.push(`${row.candidateName} (${row.email}): ${reason}`);
         result.skipped++;
