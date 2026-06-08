@@ -171,7 +171,32 @@ export async function syncFromAtsSheet(): Promise<AtsSyncResult> {
         create: { fullName: row.candidateName, email: row.email, phone: row.phone || undefined, linkedIn: row.linkedIn || undefined },
       });
 
-      // ── Skip duplicate application ─────────────────────────────────────
+      // ── Clean up stale wrong-req applications from previous syncs ──────
+      // If a previous sync (using the old department-fallback strategy)
+      // assigned this candidate to a different requisition, deactivate those
+      // applications — but ONLY if they haven't progressed (still APPLIED,
+      // no interview plan, no recruiter screen). This is safe to do because
+      // no human work has been done on them yet.
+      const staleApps = await db.application.findMany({
+        where: {
+          candidateId: candidate.id,
+          requisitionId: { not: requisition.id },
+          stage: 'APPLIED',
+          isActive: true,
+          interviewPlan: null,
+          recruiterScreen: null,
+          stageHistory: { some: { reason: 'Synced from ATS sheet' } },
+        },
+      });
+      for (const stale of staleApps) {
+        await db.application.update({
+          where: { id: stale.id },
+          data: { isActive: false },
+        });
+        logger.info(`Deactivated stale sheet-synced application ${stale.id} for ${row.candidateName} (wrong req)`);
+      }
+
+      // ── Skip duplicate application in the CORRECT req ──────────────────
       const existing = await db.application.findFirst({
         where: { requisitionId: requisition.id, candidateId: candidate.id },
       });
