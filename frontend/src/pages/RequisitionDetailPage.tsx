@@ -101,6 +101,12 @@ export default function RequisitionDetailPage() {
     onSuccess: () => { invalidate(); setShowCommentFor(null); setComment(''); },
   });
 
+  // ── editMutation MUST be declared before any early returns (Rules of Hooks) ──
+  const editMutation = useMutation({
+    mutationFn: (data: Record<string, any>) => api.patch(`/requisitions/${id}`, data).then(r => r.data),
+    onSuccess: () => { invalidate(); setShowEdit(false); },
+  });
+
   if (isLoading) {
     return (
       <Layout>
@@ -124,12 +130,7 @@ export default function RequisitionDetailPage() {
   const canEdit = req.status === 'DRAFT' &&
     ['RECRUITER', 'TA_MANAGER', 'HIRING_MANAGER', 'HOD', 'HR_HEAD', 'ADMIN', 'SUPER_ADMIN'].includes(user?.role ?? '');
 
-  const isBusy = approveMutation.isPending || rejectMutation.isPending || sendBackMutation.isPending || submitMutation.isPending;
-
-  const editMutation = useMutation({
-    mutationFn: (data: Record<string, any>) => api.patch(`/requisitions/${id}`, data).then(r => r.data),
-    onSuccess: () => { invalidate(); setShowEdit(false); },
-  });
+  const isBusy = approveMutation.isPending || rejectMutation.isPending || sendBackMutation.isPending || submitMutation.isPending || editMutation.isPending;
 
   const fmt = (n?: number) => n ? `₹${(n / 100000).toFixed(1)}L` : '—';
   const fmtDate = (d?: string) => d ? new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
