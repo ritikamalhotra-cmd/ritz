@@ -104,7 +104,14 @@ export default function RequisitionDetailPage() {
   // ── editMutation MUST be declared before any early returns (Rules of Hooks) ──
   const editMutation = useMutation({
     mutationFn: (data: Record<string, any>) => api.patch(`/requisitions/${id}`, data).then(r => r.data),
-    onSuccess: () => { invalidate(); setShowEdit(false); },
+    onSuccess: (updatedReq) => {
+      // Update the detail cache immediately from the server response so the
+      // new budget/priority values are visible the instant the form closes.
+      qc.setQueryData(['requisition', id], (old: any) => ({ ...old, ...updatedReq }));
+      // Also mark the list stale so the list page reflects the change.
+      qc.invalidateQueries({ queryKey: ['requisitions'] });
+      setShowEdit(false);
+    },
   });
 
   if (isLoading) {
@@ -264,8 +271,21 @@ export default function RequisitionDetailPage() {
                   <textarea rows={2} className="input" value={editForm.hiringReason}
                     onChange={e => setEditForm((f: any) => ({ ...f, hiringReason: e.target.value }))} />
                 </div>
-                <button onClick={() => editMutation.mutate({ budgetedCTCMin: editForm.budgetedCTCMin ? Number(editForm.budgetedCTCMin) : undefined, budgetedCTCMax: editForm.budgetedCTCMax ? Number(editForm.budgetedCTCMax) : undefined, priority: editForm.priority, hiringReason: editForm.hiringReason })}
-                  disabled={editMutation.isPending} className="btn-primary">
+                {editMutation.isError && (
+                  <p className="text-xs text-red-600 bg-red-50 rounded px-3 py-2">
+                    {(editMutation.error as any)?.response?.data?.error ?? 'Save failed — please try again.'}
+                  </p>
+                )}
+                <button
+                  onClick={() => editMutation.mutate({
+                    budgetedCTCMin: editForm.budgetedCTCMin ? Number(editForm.budgetedCTCMin) : undefined,
+                    budgetedCTCMax: editForm.budgetedCTCMax ? Number(editForm.budgetedCTCMax) : undefined,
+                    priority: editForm.priority,
+                    hiringReason: editForm.hiringReason || undefined,
+                  })}
+                  disabled={editMutation.isPending}
+                  className="btn-primary"
+                >
                   {editMutation.isPending ? 'Saving…' : 'Save Changes'}
                 </button>
               </div>

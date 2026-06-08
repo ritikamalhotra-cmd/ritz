@@ -94,18 +94,47 @@ export async function createRequisition(data: {
 // ─── Submit for approval ──────────────────────────────────────────────────────
 
 export async function submitRequisition(reqId: string, actorId: string) {
-  const req = await db.requisition.findUnique({ where: { id: reqId } });
+  // Include existing approval steps so we can detect a send-back resubmission
+  const req = await db.requisition.findUnique({
+    where: { id: reqId },
+    include: { approvalSteps: { orderBy: { stepOrder: 'asc' } } },
+  });
   if (!req) throw new Error('Requisition not found');
   if (req.status !== 'DRAFT' && req.status !== ('SENT_BACK' as any)) {
     throw new Error(`Cannot submit a requisition with status ${req.status}`);
   }
 
-  const chain = buildApprovalChain(req.grade, req.budgetedCTCMax);
+  // ── Resubmission after send-back ─────────────────────────────────────────
+  // If a step was previously SENT_BACK, we resume the chain from that step.
+  // All prior APPROVED steps are kept intact — no need to re-run them.
+  const sentBackStep = req.approvalSteps.find((s) => s.status === 'SENT_BACK');
+  if (sentBackStep) {
+    // Reset the sent-back step to PENDING (clear the decision metadata)
+    await db.requisitionApprovalStep.update({
+      where: { id: sentBackStep.id },
+      data: {
+        status: 'PENDING',
+        action: null as any,
+        comment: null,
+        actedAt: null,
+      },
+    });
+    // Guard: remove any steps beyond this one (shouldn't exist, but keep data clean)
+    await db.requisitionApprovalStep.deleteMany({
+      where: { requisitionId: reqId, stepOrder: { gt: sentBackStep.stepOrder } },
+    });
+    const resumeStatus = `PENDING_${sentBackStep.approverRole}_APPROVAL` as any;
+    return db.requisition.update({
+      where: { id: reqId },
+      data: { status: resumeStatus },
+      include: reqInclude,
+    });
+  }
 
-  // Delete any old steps and recreate
+  // ── Fresh submission: build the full approval chain ───────────────────────
+  const chain = buildApprovalChain(req.grade, req.budgetedCTCMax);
   await db.requisitionApprovalStep.deleteMany({ where: { requisitionId: reqId } });
 
-  // Create approval steps, try to pre-assign approver by matching role
   const stepData = await Promise.all(
     chain.map(async (role, idx) => {
       const dbRole = ROLE_MAP[role] ?? role;
@@ -118,7 +147,7 @@ export async function submitRequisition(reqId: string, actorId: string) {
         stepOrder: idx + 1,
         approverRole: role,
         approverId: approver?.id ?? null,
-        status: idx === 0 ? 'PENDING' : 'PENDING',
+        status: 'PENDING',
       };
     })
   );
@@ -126,13 +155,11 @@ export async function submitRequisition(reqId: string, actorId: string) {
   await db.requisitionApprovalStep.createMany({ data: stepData as any });
 
   const firstStatus = `PENDING_${chain[0]}_APPROVAL` as any;
-  const updated = await db.requisition.update({
+  return db.requisition.update({
     where: { id: reqId },
     data: { status: firstStatus },
     include: reqInclude,
   });
-
-  return updated;
 }
 
 // ─── Approve / Reject / Send-back a step ─────────────────────────────────────
