@@ -73,9 +73,24 @@ export default function AdminPage() {
       const res = await api.post('/admin/sync-ats-sheet');
       const r = res.data.result;
       if (r.errors?.length) {
-        toast.error(`ATS sync: ${r.errors[0]}`, { duration: 8000 });
+        toast.error(`ATS sync error: ${r.errors[0]}`, { duration: 10000 });
+      } else if (r.created > 0) {
+        toast.success(`ATS sync done — ${r.created} new, ${r.skipped} skipped`);
+      } else if (r.alreadyExist > 0 && r.noReq === 0 && r.badReqNo === 0) {
+        // All skipped because already correctly synced — this is fine
+        toast(`ATS sync — all ${r.alreadyExist} candidates already in correct pipelines ✓`, {
+          duration: 8000, icon: '✅',
+        });
       } else {
-        toast.success(`ATS sync done — ${r.created} applications created, ${r.skipped} skipped`);
+        // Some or all skipped due to missing/wrong-status reqs — actionable
+        const parts: string[] = [];
+        if (r.noReq   > 0) parts.push(`${r.noReq} req not approved yet`);
+        if (r.badReqNo > 0) parts.push(`${r.badReqNo} missing req no. in col F`);
+        if (r.alreadyExist > 0) parts.push(`${r.alreadyExist} already synced`);
+        const firstReason = r.skippedDetails?.[0] ?? '';
+        toast(`ATS sync — 0 created. ${parts.join(', ')}${firstReason ? `. e.g. ${firstReason}` : ''}`, {
+          duration: 12000, icon: '⚠️',
+        });
       }
       qc.invalidateQueries({ queryKey: ['applications'] });
       qc.invalidateQueries({ queryKey: ['requisitions'] });

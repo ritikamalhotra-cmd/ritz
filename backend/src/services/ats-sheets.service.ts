@@ -106,16 +106,19 @@ async function fetchSheetRows(): Promise<AtsSheetRow[]> {
 }
 
 export interface AtsSyncResult {
-  total:   number;
-  created: number;
-  skipped: number;
-  errors:  string[];
-  skippedDetails?: string[];
+  total:        number;
+  created:      number;
+  skipped:      number;
+  alreadyExist: number;   // skipped because app already in correct req
+  noReq:        number;   // skipped because req not found / wrong status
+  badReqNo:     number;   // skipped because col F blank/invalid
+  errors:       string[];
+  skippedDetails: string[];
 }
 
 export async function syncFromAtsSheet(): Promise<AtsSyncResult> {
   logger.info('Starting ATS sheet sync…');
-  const result: AtsSyncResult = { total: 0, created: 0, skipped: 0, errors: [], skippedDetails: [] };
+  const result: AtsSyncResult = { total: 0, created: 0, skipped: 0, alreadyExist: 0, noReq: 0, badReqNo: 0, errors: [], skippedDetails: [] };
 
   let rows: AtsSheetRow[];
   try {
@@ -144,8 +147,9 @@ export async function syncFromAtsSheet(): Promise<AtsSyncResult> {
       if (!reqNum) {
         const reason = `col F is blank or not a valid requisition number ("${row.requisitionNo}")`;
         logger.info(`Skipping ${row.email}: ${reason}`);
-        result.skippedDetails!.push(`${row.candidateName} (${row.email}): ${reason}`);
+        result.skippedDetails.push(`${row.candidateName} (${row.email}): ${reason}`);
         result.skipped++;
+        result.badReqNo++;
         continue;
       }
 
@@ -157,10 +161,15 @@ export async function syncFromAtsSheet(): Promise<AtsSyncResult> {
       });
 
       if (!requisition) {
-        const reason = `REQ-${String(reqNum).padStart(4, '0')} not found or not in APPROVED/OPEN status`;
+        // Find the req regardless of status to give a precise reason
+        const anyReq = await db.requisition.findFirst({ where: { reqNumber: reqNum } });
+        const reason = anyReq
+          ? `REQ-${String(reqNum).padStart(4, '0')} exists but status is "${anyReq.status}" (needs APPROVED or OPEN)`
+          : `REQ-${String(reqNum).padStart(4, '0')} does not exist`;
         logger.info(`Skipping ${row.email}: ${reason}`);
-        result.skippedDetails!.push(`${row.candidateName} (${row.email}): ${reason}`);
+        result.skippedDetails.push(`${row.candidateName} (${row.email}): ${reason}`);
         result.skipped++;
+        result.noReq++;
         continue;
       }
 
@@ -201,8 +210,9 @@ export async function syncFromAtsSheet(): Promise<AtsSyncResult> {
         where: { requisitionId: requisition.id, candidateId: candidate.id },
       });
       if (existing) {
-        result.skippedDetails!.push(`${row.candidateName}: already has application for ${requisition.title}`);
+        result.skippedDetails.push(`${row.candidateName}: already in REQ-${String(requisition.reqNumber).padStart(4, '0')} (${requisition.title})`);
         result.skipped++;
+        result.alreadyExist++;
         continue;
       }
 
